@@ -1,9 +1,6 @@
 import 'dotenv/config';
-import express from 'express';
+import { app } from './app';
 import { sequelize } from './config/database';
-
-const app = express();
-app.use(express.json());
 
 async function start(): Promise<void> {
   try {

@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "Backend API",
+    "description": "Requests for the backend API. Currently includes assessment-only fake OTP requests; registration, login and profile requests will be added when implemented. At most three successful OTP requests are allowed per phone number in a rolling hour. Change the collection phone_number variable to test with a different number.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "phone_number",
+      "value": "8562056666666"
+    },
+    {
+      "key": "temporary_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Request OTP - JSON",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('OTP request succeeds', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  pm.test('Response contains a six-digit OTP and temporary token', function () {",
+              "    pm.expect(body.data.otp_code).to.match(/^\\d{6}$/);",
+              "    pm.expect(pm.response.headers.get('X-Temporary-Token')).to.be.a('string').and.not.empty;",
+              "  });",
+              "  pm.collectionVariables.set('temporary_token', pm.response.headers.get('X-Temporary-Token'));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"{{phone_number}}\"\n}"
+        },
+        "url": "{{base_url}}/api/auth/otp"
+      }
+    },
+    {
+      "name": "Request OTP - form-data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Form-data OTP request succeeds', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { pm.collectionVariables.set('temporary_token', pm.response.headers.get('X-Temporary-Token')); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "phone_number",
+              "value": "{{phone_number}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": "{{base_url}}/api/auth/otp"
+      }
+    },
+    {
+      "name": "Reject unknown field",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unknown field is rejected', function () {",
+              "  pm.response.to.have.status(400);",
+              "  pm.expect(pm.response.json().code).to.eql('VALIDATION_ERR_UNKNOWN_FIELD');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"{{phone_number}}\",\n  \"unexpected\": \"value\"\n}"
+        },
+        "url": "{{base_url}}/api/auth/otp"
+      }
+    }
+  ]
+}
