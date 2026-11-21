@@ -1,48 +1,92 @@
 # Backend authentication API
 
-A TypeScript, Express, PostgreSQL and Sequelize authentication API with OTP requests, registration, login and profile endpoints.
+A TypeScript, Express and PostgreSQL API for OTP registration, login and profile management. The fake OTP is stored in the database and returned in the response for this assessment; no SMS service is required. Optional profile image upload is not implemented.
 
-## Requirements
+## Start
 
-- Node.js 20 or later and npm
-- Docker with Docker Compose
+Requires Node.js **20.6.0 or later**, npm, Docker Compose and Postman.
 
-## Local setup
+Create `.env` from `.env.example` using **Windows PowerShell**:
 
-1. Copy `.env.example` to `.env`. The values in the example are for local development only.
-2. Run `npm install`.
-3. Start PostgreSQL with `docker compose up -d` and wait until it is healthy.
-4. Apply migrations with `npm run db:migrate`.
-5. Start the API in development mode with `npm run dev`.
+```powershell
+Copy-Item .env.example .env
+```
 
-The application verifies the database connection before accepting requests. The default API port is 3000; configure it and the database connection in `.env`. The Compose database uses a persistent volume.
+On **macOS/Linux**:
 
-Run `npm run typecheck` to check types, or `npm run build` followed by `npm start` to run compiled code. Use `npm run db:migrate:undo` to undo the most recent migration.
+```sh
+cp .env.example .env
+```
 
-## Request an OTP
+Set `JWT_SECRET` in `.env` to a random secret. Then run:
 
-Set `JWT_SECRET` in `.env` to a random secret before requesting an OTP. `TEMP_TOKEN_TTL_SECONDS` configures the temporary token lifetime; it defaults to 300 seconds. Never commit your actual secret.
+```sh
+npm install
+docker compose up -d
+npm run db:migrate
+npm run dev
+```
 
-Send a JSON or form-data request to `POST /api/auth/otp` with `phone_number` as an 8–15 digit string. The fake OTP is returned in `data.otp_code` and a temporary JWT is returned in the `X-Temporary-Token` header. The fake OTP is exposed solely for this assessment; a real deployment must deliver it securely instead.
+Wait for PostgreSQL to become healthy if migrations cannot connect immediately. The API defaults to `http://localhost:3000`; PostgreSQL uses host port `5433`.
 
-OTPs expire after one minute. A new request invalidates the prior OTP, and a phone number may request at most three OTPs in a rolling hour.
+## Test with Postman
 
-Error messages support English and Lao through `Accept-Language`; unsupported or absent languages default to English. Error codes remain the same in both languages.
+Import [Backend API.postman_collection.json](postman/Backend%20API.postman_collection.json). Set the collection's `base_url` and a **new** `phone_number`, then send these requests in order:
 
-Multipart requests have field-count and field-size limits. If a request exceeds a limit before an unknown field is parsed, it receives the invalid-field error for the limit.
+1. **Request OTP - JSON** → saves the OTP and temporary token.
+2. **Register with OTP** → saves the access token.
+3. **Request OTP for login** → saves a new OTP and temporary token.
+4. **Login with OTP** → saves a new access token.
+5. **Get my profile**, **Update my name**, and **Reject phone number update**.
 
-## Registration and login
+The collection also includes form-data and validation examples. It saves tokens in collection variables; check any active Postman environment if those variables are overridden. A full collection run uses three OTP requests, so use a new phone number for each run.
 
-Use the temporary JWT returned by the OTP request as a bearer token for `POST /api/auth/register` or `POST /api/auth/login`. Registration accepts `otp_code` and `name`; login accepts `otp_code`. Both return an access token in `data.access_token`. Request a new OTP before each successful authentication.
+OTPs expire after **one minute**, become invalid when replaced or used, and are limited to **three requests per phone number per rolling hour**. After three wrong entries, further attempts are rejected. Profile endpoints require the access token; the temporary token is only for registration and login.
 
-`ACCESS_TOKEN_TTL_SECONDS` configures the access token lifetime and defaults to 86400 seconds. Invalid temporary tokens return 401. Invalid, expired, replaced or consumed OTPs return 400; after three wrong attempts, subsequent attempts return 429. Registering an existing phone number returns 409, while logging in with an unregistered number returns 404.
+## Endpoints
 
-## Profile
+| Method | Path | Token | Body |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/otp` | None | `phone_number` |
+| `POST` | `/api/auth/register` | Temporary | `otp_code`, `name` |
+| `POST` | `/api/auth/login` | Temporary | `otp_code` |
+| `GET` | `/api/users/me` | Access | — |
+| `PATCH` | `/api/users/me` | Access | `name` |
 
-Send the access token as a bearer token to `GET /api/users/me` to read the authenticated user's profile. Use `PATCH /api/users/me` with a JSON or form-data `name` field to update it. The phone number cannot be updated.
+Send tokens as `Authorization: Bearer <token>`. Bodies accept JSON or form-data, and responses contain `error`, `code`, `message` and `data`. Error messages support `Accept-Language: lo` or `en`; English is the default. Unknown fields return `VALIDATION_ERR_UNKNOWN_FIELD`. If a multipart limit is reached before an unknown field is parsed, the invalid-field error takes precedence.
 
-To test in Postman, import the included Backend API collection. Its `base_url`, `phone_number`, `name` and `updated_name` collection variables can be changed before sending requests. Successful requests save the OTP and tokens as collection variables. The collection's complete run registers a user, so use a new phone number when running it again.
+## Automated tests
 
-## Integration tests
+Use a separate terminal and an **isolated** PostgreSQL database named `csl_otp_test`. The following creates a separate Compose project on port `55441`; choose an available port and an unused project name. It uses the database credentials and `JWT_SECRET` from `.env`.
 
-Run `npm test` against an isolated PostgreSQL database named `csl_otp_test` after applying migrations and setting the database environment variables and `JWT_SECRET`. Tests create OTP records and must not target a shared or production database.
+**Windows PowerShell:**
+
+```powershell
+$env:DB_HOST = '127.0.0.1'
+$env:DB_NAME = 'csl_otp_test'
+$env:DB_PORT = '55441'
+$env:TEMP_TOKEN_TTL_SECONDS = '300'
+$env:ACCESS_TOKEN_TTL_SECONDS = '86400'
+docker compose -p csl-evaluation-test up -d --wait
+npm run db:migrate
+npm test
+docker compose -p csl-evaluation-test down
+```
+
+**macOS/Linux (Bash or Zsh):**
+
+```sh
+export DB_HOST='127.0.0.1'
+export DB_NAME='csl_otp_test'
+export DB_PORT='55441'
+export TEMP_TOKEN_TTL_SECONDS='300'
+export ACCESS_TOKEN_TTL_SECONDS='86400'
+docker compose -p csl-evaluation-test up -d --wait
+npm run db:migrate
+npm test
+docker compose -p csl-evaluation-test down
+```
+
+Tests create records, functions and triggers and inspect PostgreSQL activity; the test database role must own the tables and be allowed to create those objects. The database-name guard does not prove isolation. Some tests intentionally log errors; check the test summary and exit status. `down` stops the test container but retains its volume.
+
+Run `npm run typecheck` and `npm run build` for the remaining checks.

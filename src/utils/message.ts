@@ -77,6 +77,14 @@ export const messages = {
     en: 'Failed to connect to the database:',
     lo: 'ເຊື່ອມຕໍ່ຖານຂໍ້ມູນບໍ່ສຳເລັດ:',
   },
+  noTestFiles: {
+    en: 'No test files found',
+    lo: 'ບໍ່ພົບໄຟລ໌ທົດສອບ',
+  },
+  testRunnerFailed: {
+    en: 'Test runner failed:',
+    lo: 'ການແລ່ນທົດສອບບໍ່ສຳເລັດ:',
+  },
 } as const;
 
 export function requestMessage(req: Request, key: keyof typeof messages): string {
