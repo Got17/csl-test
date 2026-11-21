@@ -1,24 +1,22 @@
 # Backend authentication API
 
-A TypeScript, Express and PostgreSQL API for OTP registration, login and profile management. The fake OTP is stored in the database and returned in the response for this assessment; no SMS service is required.
+An Express and PostgreSQL API for OTP registration, login and profile management. For this assessment, the OTP is returned in the API response; no SMS is sent.
 
-## Start
+## Run locally
 
-Requires Node.js **20.6.0 or later**, npm, Docker Compose and Postman.
+Requires Node.js 20.6+, npm and Docker Compose.
 
-Create `.env` from `.env.example` using **Windows PowerShell**:
+Create `.env` from `.env.example` and set `JWT_SECRET` to a random local secret:
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item .env.example .env  # Windows PowerShell
 ```
-
-On **macOS/Linux**:
 
 ```sh
-cp .env.example .env
+cp .env.example .env        # macOS/Linux
 ```
 
-Set `JWT_SECRET` in `.env` to a random secret. Then run:
+Start the database and API:
 
 ```sh
 npm install
@@ -27,43 +25,45 @@ npm run db:migrate
 npm run dev
 ```
 
-Wait for PostgreSQL to become healthy if migrations cannot connect immediately. The API defaults to `http://localhost:3000`; PostgreSQL uses host port `5433`.
+The API runs at `http://localhost:3000` by default. If migration cannot connect, wait for PostgreSQL to start and retry it.
 
 ## Test with Postman
 
-Import [Backend API.postman_collection.json](postman/Backend%20API.postman_collection.json). Set the collection's `base_url` and a **new** `phone_number`, then send these requests in order:
+1. Import [the Postman collection](postman/Backend%20API.postman_collection.json).
+2. In the collection's **Variables** tab, set `base_url` and a new `phone_number` of 8–15 digits. Save the variables. Check that your active environment does not override them.
+3. Send these requests in order:
 
-1. **Request OTP - JSON** → saves the OTP and temporary token.
-2. **Register with OTP** → saves the access token.
-3. **Request OTP for login** → saves a new OTP and temporary token.
-4. **Login with OTP** → saves a new access token.
-5. **Get my profile**, **Update my name**, and **Reject phone number update**.
+| Request | Expected result |
+| --- | --- |
+| **Request OTP - JSON** | `200`; OTP in `data.otp_code`, temporary token in `X-Temporary-Token` |
+| **Register with OTP** | `200`; returns an access token |
+| **Request OTP for login** | `200`; returns a new OTP and temporary token |
+| **Login with OTP** | `200`; returns an access token |
+| **Get my profile** | `200`; returns the user's profile |
+| **Update my name** | `200`; returns the updated name |
+| **Reject phone number update** | `400`; `VALIDATION_ERR_UNKNOWN_FIELD` |
+| **Upload profile image** | Select a JPEG, PNG or WebP file in the `image` field; expect `200` and `data.image_url` |
 
-The collection also includes form-data and validation examples. It saves tokens in collection variables; check any active Postman environment if those variables are overridden. A full collection run uses three OTP requests, so use a new phone number for each run.
+The collection saves OTPs and tokens automatically; check the **Test Results** tab. OTPs expire after one minute, are single-use and are limited to three requests per phone number per rolling hour. Use a new number when repeating registration. The complete collection uses three OTP requests; select an image file before running the upload request.
 
-OTPs expire after **one minute**, become invalid when replaced or used, and are limited to **three requests per phone number per rolling hour**. After three wrong entries, further attempts are rejected. Profile endpoints require the access token; the temporary token is only for registration and login.
-
-OTP delivery uses an interface; only the fake implementation is included. A future SMS implementation can be supplied when creating the app and must return the delivered outcome so the response omits the code. Delivery happens after the OTP is saved; if delivery fails, the request remains counted and earlier OTPs stay invalidated.
+To view an uploaded image, append `image_url` to the API address, for example `http://localhost:3000/uploads/<filename>.png`.
 
 ## Endpoints
 
-| Method | Path | Token | Body |
+| Method | Path | Authorization | Body |
 | --- | --- | --- | --- |
 | `POST` | `/api/auth/otp` | None | `phone_number` |
-| `POST` | `/api/auth/register` | Temporary | `otp_code`, `name` |
-| `POST` | `/api/auth/login` | Temporary | `otp_code` |
-| `GET` | `/api/users/me` | Access | — |
-| `PATCH` | `/api/users/me` | Access | `name` |
-| `POST` | `/api/users/me/image` | Access | multipart `image` (JPEG/PNG/WebP, max 5 MB) |
+| `POST` | `/api/auth/register` | Temporary token | `otp_code`, `name` |
+| `POST` | `/api/auth/login` | Temporary token | `otp_code` |
+| `GET` | `/api/users/me` | Access token | — |
+| `PATCH` | `/api/users/me` | Access token | `name` |
+| `POST` | `/api/users/me/image` | Access token | form-data file `image` |
 
-Send tokens as `Authorization: Bearer <token>`. Bodies accept JSON or form-data, and responses contain `error`, `code`, `message` and `data`. Error messages support `Accept-Language: lo` or `en`; English is the default. Unknown fields return `VALIDATION_ERR_UNKNOWN_FIELD`. If a multipart limit is reached before an unknown field is parsed, the invalid-field error takes precedence.
+Send tokens as `Authorization: Bearer <token>`. Text requests accept JSON or form-data. Images are limited to 5 MB and 20 million pixels; `UPLOAD_DIRECTORY` changes their storage directory. Error messages support `Accept-Language: lo` or `en` (default).
 
-Profile image URLs are returned as `image_url` and served from local storage under `/uploads`. Set `UPLOAD_DIRECTORY` to change the storage directory.
-To view an uploaded image, prepend your API base URL to the returned `image_url` (for example, `http://localhost:3000` + `/uploads/<filename>.png`) and open the result in a browser or send a `GET` request in Postman. To upload from Postman, send `POST /api/users/me/image` as form-data with the key `image` set to a JPEG, PNG or WebP file.
+## Automated checks
 
-## Automated tests
-
-Use a separate terminal and an **isolated** PostgreSQL database named `csl_otp_test`. The following creates a separate Compose project on port `55441`; choose an available port and an unused project name. It uses the database credentials and `JWT_SECRET` from `.env`.
+Run tests against a separate, **isolated** PostgreSQL database named `csl_otp_test`. This example creates a separate Compose project on port `55441` and uses the credentials and `JWT_SECRET` from `.env`. Choose an unused project name and available port.
 
 **Windows PowerShell:**
 
@@ -79,7 +79,7 @@ npm test
 docker compose -p csl-evaluation-test down
 ```
 
-**macOS/Linux (Bash or Zsh):**
+**macOS/Linux:**
 
 ```sh
 export DB_HOST='127.0.0.1'
@@ -93,6 +93,6 @@ npm test
 docker compose -p csl-evaluation-test down
 ```
 
-Tests create records, functions and triggers and inspect PostgreSQL activity; the test database role must own the tables and be allowed to create those objects. The database-name guard does not prove isolation. Some tests intentionally log errors; check the test summary and exit status. `down` stops the test container but retains its volume.
+The test database role must own its tables and be allowed to create functions and triggers. The database-name guard does not prove isolation. `down` retains the database volume. Some tests intentionally log errors; check the test summary and exit status.
 
-Run `npm run typecheck` and `npm run build` for the remaining checks.
+Run `npm run typecheck` and `npm run build` for the other checks. The server prints JSON request logs; use the `X-Request-Id` response header to match a request with error logs. Request bodies, OTPs, phone numbers and tokens are not logged.
