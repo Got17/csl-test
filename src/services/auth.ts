@@ -1,10 +1,11 @@
 import jwt from 'jsonwebtoken';
-import { Model, Transaction, UniqueConstraintError } from 'sequelize';
+import { Transaction, UniqueConstraintError } from 'sequelize';
 import { sequelize } from '../config/database';
-import { AuthAction, AuthError, TokenPurpose } from '../constants/auth';
+import { AuthAction, AuthError, JWT_ALGORITHM, TokenPurpose } from '../constants/auth';
 import { PHONE_NUMBER_PATTERN } from '../constants/validation';
+import { UserField } from '../constants/user';
 import { OtpVerification, OtpVerificationModel } from '../models/otp-verification';
-import { User } from '../models/user';
+import { User, UserModel } from '../models/user';
 import { messages } from '../utils/message';
 import { lockPhoneNumber } from '../utils/phone-lock';
 
@@ -23,7 +24,7 @@ export function verifyTemporaryToken(token: string): TemporaryClaims | null {
 
   try {
     const payload = jwt.verify(token, secret, {
-      algorithms: ['HS256'],
+      algorithms: [JWT_ALGORITHM],
     });
     if (typeof payload === 'string' || payload.purpose !== TokenPurpose.Otp
       || typeof payload.phone_number !== 'string' || !PHONE_NUMBER_PATTERN.test(payload.phone_number)
@@ -89,7 +90,7 @@ async function findOrCreateUser(
   name: string | undefined,
   transaction: Transaction,
 ): Promise<{
-  user: Model;
+  user: UserModel;
 } | {
   error: AuthError;
 }> {
@@ -110,6 +111,9 @@ async function findOrCreateUser(
     } : {
       error: AuthError.UserNotFound,
     };
+  }
+  if (name === undefined) {
+    throw new Error(messages.authenticationFailed.en);
   }
   const user = await User.create({
     phone_number: phoneNumber,
@@ -150,7 +154,7 @@ export async function authenticate(
         return account;
       }
 
-      const userId = account.user.get('id');
+      const userId = account.user.get(UserField.Id);
       if (typeof userId !== 'number' || !Number.isSafeInteger(userId) || userId <= 0) {
         throw new Error(messages.invalidUserId.en);
       }

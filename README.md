@@ -1,6 +1,6 @@
 # Backend authentication API
 
-A TypeScript, Express, PostgreSQL and Sequelize authentication API. OTP requests, registration and login are available; profile endpoints will follow.
+A TypeScript, Express, PostgreSQL and Sequelize authentication API with OTP requests, registration, login and profile endpoints.
 
 ## Requirements
 
@@ -35,7 +35,11 @@ Use the temporary JWT returned by the OTP request as a bearer token for `POST /a
 
 `ACCESS_TOKEN_TTL_SECONDS` configures the access token lifetime and defaults to 86400 seconds. Invalid temporary tokens return 401. Invalid, expired, replaced or consumed OTPs return 400; after three wrong attempts, subsequent attempts return 429. Registering an existing phone number returns 409, while logging in with an unregistered number returns 404.
 
-To test in Postman, import the included Backend API collection. Its `base_url`, `phone_number` and `name` collection variables can be changed before sending requests. Successful requests save the OTP and tokens as collection variables. The collection's complete run registers a user, so use a new phone number when running it again.
+## Profile
+
+Send the access token as a bearer token to `GET /api/users/me` to read the authenticated user's profile. Use `PATCH /api/users/me` with a JSON or form-data `name` field to update it. The phone number cannot be updated.
+
+To test in Postman, import the included Backend API collection. Its `base_url`, `phone_number`, `name` and `updated_name` collection variables can be changed before sending requests. Successful requests save the OTP and tokens as collection variables. The collection's complete run registers a user, so use a new phone number when running it again.
 
 ## Integration tests
 

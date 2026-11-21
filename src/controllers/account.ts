@@ -1,17 +1,18 @@
 import { Request, Response } from 'express';
 import Joi from 'joi';
-import { AuthAction, AuthError } from '../constants/auth';
+import { AUTHORIZATION_HEADER, BEARER_TOKEN_PATTERN, AuthAction, AuthError } from '../constants/auth';
 import { ErrorCode } from '../constants/error-code';
 import { ValidationErrorType } from '../constants/validation';
 import { LoginDto, RegisterDto } from '../dtos/auth';
 import { authenticate, verifyTemporaryToken } from '../services/auth';
 import { sendBadRequest, sendError, sendInternalServerError } from '../utils/error-response';
 import { messages } from '../utils/message';
+import { nameSchema } from '../validations/name';
 
 const otpCode = Joi.string().pattern(/^\d{6}$/).required();
 const registerSchema = Joi.object<RegisterDto>({
   otp_code: otpCode,
-  name: Joi.string().trim().max(100).required(),
+  name: nameSchema,
 }).unknown(false).required();
 const loginSchema = Joi.object<LoginDto>({
   otp_code: otpCode,
@@ -36,8 +37,8 @@ function sendAuthenticationError(res: Response, error: AuthError): void {
 
 export async function handleAuthentication(req: Request, res: Response, action: AuthAction): Promise<void> {
   try {
-    const authorization = req.get('Authorization') || '';
-    const match = /^Bearer\s+(\S+)$/i.exec(authorization);
+    const authorization = req.get(AUTHORIZATION_HEADER) || '';
+    const match = BEARER_TOKEN_PATTERN.exec(authorization);
     const claims = match ? verifyTemporaryToken(match[1]) : null;
     if (!claims) {
       sendError(res, 401, ErrorCode.InvalidToken, 'invalidTemporaryToken');

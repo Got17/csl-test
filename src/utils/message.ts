@@ -29,6 +29,18 @@ export const messages = {
     en: 'Invalid or missing temporary token',
     lo: 'ໂທເຄັນຊົ່ວຄາວບໍ່ຖືກຕ້ອງ ຫຼື ບໍ່ມີໂທເຄັນ',
   },
+  invalidAccessToken: {
+    en: 'Invalid or missing access token',
+    lo: 'ໂທເຄັນເຂົ້າໃຊ້ບໍ່ຖືກຕ້ອງ ຫຼື ບໍ່ມີໂທເຄັນ',
+  },
+  missingJwtSecret: {
+    en: 'JWT_SECRET is required',
+    lo: 'ຕ້ອງກຳນົດ JWT_SECRET',
+  },
+  profileRequestFailed: {
+    en: 'Profile request failed:',
+    lo: 'ຄຳຮ້ອງຂໍໂປຣໄຟລ໌ບໍ່ສຳເລັດ:',
+  },
   userAlreadyExists: {
     en: 'User already exists',
     lo: 'ມີຜູ້ໃຊ້ນີ້ແລ້ວ',

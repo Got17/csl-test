@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Backend API",
-    "description": "Requests for the backend API, including OTP requests, registration and login. At most three successful OTP requests are allowed per phone number in a rolling hour. Use a new phone number when running the complete collection again.",
+    "description": "Requests for the backend API, including assessment-only OTP requests, registration, login and profiles. At most three successful OTP requests are allowed per phone number in a rolling hour. Use a new phone number when running the complete collection again.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -28,6 +28,10 @@
     {
       "key": "access_token",
       "value": ""
+    },
+    {
+      "key": "updated_name",
+      "value": "Jane Doe"
     }
   ],
   "item": [
@@ -303,6 +307,103 @@
           "raw": "{\n  \"otp_code\": \"{{otp_code}}\"\n}"
         },
         "url": "{{base_url}}/api/auth/login"
+      }
+    },
+    {
+      "name": "Get my profile",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Get my profile', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(pm.response.json().data.phone_number).to.eql(pm.collectionVariables.get('phone_number')); ",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/users/me"
+      }
+    },
+    {
+      "name": "Update my name",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Update my name', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(pm.response.json().data.phone_number).to.eql(pm.collectionVariables.get('phone_number')); ",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/users/me",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{updated_name}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Reject phone number update",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Reject phone number update', function () {",
+              "  pm.response.to.have.status(400);",
+              "  pm.expect(pm.response.json().code).to.eql('VALIDATION_ERR_UNKNOWN_FIELD');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/users/me",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"8562051111111\",\n  \"name\": \"{{updated_name}}\"\n}"
+        }
       }
     }
   ]
