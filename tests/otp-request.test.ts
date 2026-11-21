@@ -144,3 +144,61 @@ test('malformed JSON and unexpected files receive JSON error envelopes', async (
   assert.equal(tooManyFields.status, 400);
   assert.equal(tooManyFields.body.error, true);
 });
+
+test('error responses honor Accept-Language and fall back to English', async () => {
+  const lao = await request(app)
+    .post('/api/auth/otp')
+    .set('Accept-Language', 'lo-LA,lo;q=0.9,en;q=0.8')
+    .send({
+      phone_number: '123',
+    });
+  assert.equal(lao.status, 400);
+  assert.equal(lao.body.message, 'ຄຳຮ້ອງຂໍບໍ່ຖືກຕ້ອງ');
+  assert.match(lao.headers.vary, /Accept-Language/i);
+
+  const fallback = await request(app)
+    .post('/api/auth/otp')
+    .set('Accept-Language', 'fr')
+    .send({
+      phone_number: '123',
+    });
+  assert.equal(fallback.status, 400);
+  assert.equal(fallback.body.message, 'Bad Request');
+});
+
+test('OTP request limit is translated when Lao is preferred', async () => {
+  const phone = phoneNumber();
+  for (let i = 0; i < 3; i++) {
+    const response = await request(app).post('/api/auth/otp').send({
+      phone_number: phone,
+    });
+    assert.equal(response.status, 200);
+  }
+  const response = await request(app)
+    .post('/api/auth/otp')
+    .set('Accept-Language', 'lo')
+    .send({
+      phone_number: phone,
+    });
+  assert.equal(response.status, 429);
+  assert.equal(response.body.code, 'OTP_ERR_MAX_REQUEST');
+  assert.equal(response.body.message, 'ຂໍລະຫັດ OTP ເກີນຈຳນວນທີ່ກຳນົດ ກະລຸນາລອງໃໝ່ຫຼັງຈາກ 1 ຊົ່ວໂມງ');
+});
+
+test('internal errors return the requested language without exposing configuration details', async () => {
+  const secret = process.env.JWT_SECRET;
+  delete process.env.JWT_SECRET;
+  try {
+    const response = await request(app)
+      .post('/api/auth/otp')
+      .set('Accept-Language', 'lo')
+      .send({
+        phone_number: phoneNumber(),
+      });
+    assert.equal(response.status, 500);
+    assert.equal(response.body.message, 'ເກີດຂໍ້ຜິດພາດພາຍໃນເຊີບເວີ');
+    assert.equal(response.body.code, 'INTERNAL_SERVER_ERROR');
+  } finally {
+    if (secret !== undefined) process.env.JWT_SECRET = secret;
+  }
+});

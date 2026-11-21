@@ -27,6 +27,8 @@ Send a JSON or form-data request to `POST /api/auth/otp` with `phone_number` as 
 
 OTPs expire after one minute. A new request invalidates the prior OTP, and a phone number may request at most three OTPs in a rolling hour.
 
+Error messages support English and Lao through `Accept-Language`; unsupported or absent languages default to English. Error codes remain the same in both languages.
+
 To test in Postman, import the included Backend API collection. Its `base_url` and `phone_number` collection variables can be changed before sending requests. Successful requests save the temporary token as a collection variable; it expires after the configured temporary token lifetime.
 
 ## Integration tests

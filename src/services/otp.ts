@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
 import { sequelize } from '../config/database';
 import { OtpVerification } from '../models/otp-verification';
+import { messages } from '../utils/message';
 
 const OTP_REQUEST_LIMIT = 3;
 const REQUEST_WINDOW_MS = 60 * 60 * 1000;
@@ -17,7 +18,7 @@ export async function issueOtp(phoneNumber: string): Promise<{
   const secret = process.env.JWT_SECRET;
   const expiresIn = Number(process.env.TEMP_TOKEN_TTL_SECONDS || DEFAULT_TEMP_TOKEN_TTL_SECONDS);
   if (!secret || !Number.isSafeInteger(expiresIn) || expiresIn <= 0) {
-    throw new Error('JWT_SECRET and a valid TEMP_TOKEN_TTL_SECONDS are required');
+    throw new Error(messages.invalidJwtConfiguration.en);
   }
 
   return sequelize.transaction(async (transaction) => {

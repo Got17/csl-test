@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Joi from 'joi';
 import { issueOtp } from '../services/otp';
 import { sendBadRequest, sendInternalServerError } from '../utils/error-response';
+import { messages, requestMessage } from '../utils/message';
 
 const requestSchema = Joi.object<{
   phone_number: string;
@@ -23,10 +24,11 @@ export async function requestOtp(req: Request, res: Response): Promise<void> {
   try {
     const result = await issueOtp(value.phone_number);
     if (!result) {
+      res.vary('Accept-Language');
       res.status(429).json({
         error: true,
         code: 'OTP_ERR_MAX_REQUEST',
-        message: 'Max OTP request exceeded, Please try again next 1 hour',
+        message: requestMessage(req, 'otpMaxRequest'),
         data: {},
       });
       return;
@@ -42,7 +44,7 @@ export async function requestOtp(req: Request, res: Response): Promise<void> {
       },
     });
   } catch (err) {
-    console.error('OTP request failed:', err);
+    console.error(messages.otpRequestFailed.en, err);
     sendInternalServerError(res);
   }
 }

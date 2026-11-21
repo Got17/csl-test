@@ -1,6 +1,7 @@
 import express, { ErrorRequestHandler } from 'express';
 import { authRouter } from './routes/auth';
 import { sendBadRequest, sendInternalServerError } from './utils/error-response';
+import { messages } from './utils/message';
 
 export const app = express();
 
@@ -12,7 +13,7 @@ const handleRequestError: ErrorRequestHandler = (error, _req, res, _next) => {
     sendBadRequest(res);
     return;
   }
-  console.error('Request failed:', error);
+  console.error(messages.requestFailed.en, error);
   sendInternalServerError(res);
 };
 
