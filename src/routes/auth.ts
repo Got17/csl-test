@@ -1,9 +1,10 @@
 import { RequestHandler, Router } from 'express';
 import multer from 'multer';
-import { AuthAction } from '../constants/auth';
+import { AuthAction, AuthField } from '../constants/auth';
+import { UserField } from '../constants/user';
 import { requestOtp } from '../controllers/auth';
 import { handleAuthentication } from '../controllers/account';
-import { sendBadRequest } from '../utils/error-response';
+import { sendMultipartError } from '../utils/error-response';
 
 export const authRouter = Router();
 
@@ -30,27 +31,29 @@ const parseAccountFormData = multer({
 authRouter.post('/otp', (req, res, next) => {
   parseFormData(req, res, (error) => {
     if (error) {
-      sendBadRequest(res);
+      sendMultipartError(res, error, req.body, [UserField.PhoneNumber]);
       return;
     }
     next();
   });
 }, requestOtp);
 
-const parseAccountRequest: RequestHandler = (req, res, next) => {
-  parseAccountFormData(req, res, (error) => {
-    if (error) {
-      sendBadRequest(res);
-      return;
-    }
-    next();
-  });
-};
+function parseAccountRequest(knownFields: readonly string[]): RequestHandler {
+  return (req, res, next) => {
+    parseAccountFormData(req, res, (error) => {
+      if (error) {
+        sendMultipartError(res, error, req.body, knownFields);
+        return;
+      }
+      next();
+    });
+  };
+}
 
-authRouter.post('/register', parseAccountRequest, (req, res) => {
+authRouter.post('/register', parseAccountRequest([AuthField.OtpCode, UserField.Name]), (req, res) => {
   void handleAuthentication(req, res, AuthAction.Register);
 });
 
-authRouter.post('/login', parseAccountRequest, (req, res) => {
+authRouter.post('/login', parseAccountRequest([AuthField.OtpCode]), (req, res) => {
   void handleAuthentication(req, res, AuthAction.Login);
 });

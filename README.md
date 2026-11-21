@@ -29,6 +29,8 @@ OTPs expire after one minute. A new request invalidates the prior OTP, and a pho
 
 Error messages support English and Lao through `Accept-Language`; unsupported or absent languages default to English. Error codes remain the same in both languages.
 
+Multipart requests have field-count and field-size limits. If a request exceeds a limit before an unknown field is parsed, it receives the invalid-field error for the limit.
+
 ## Registration and login
 
 Use the temporary JWT returned by the OTP request as a bearer token for `POST /api/auth/register` or `POST /api/auth/login`. Registration accepts `otp_code` and `name`; login accepts `otp_code`. Both return an access token in `data.access_token`. Request a new OTP before each successful authentication.

@@ -95,8 +95,12 @@ test('three wrong attempts persist and lock the OTP even for the correct code', 
       name: 'John Doe',
     });
   assert.equal(locked.status, 429);
-  assert.equal(locked.body.code, 'OTP_ERR_MAX_ATTEMPT');
-  assert.equal(locked.body.message, 'Wrong OTP attempted exceeded, Please request new OTP instead');
+  assert.deepEqual(locked.body, {
+    error: true,
+    code: 'OTP_ERR_MAX_ATTEMPT',
+    message: 'Wrong OTP attempted exceeded, Please request new OTP instead',
+    data: {},
+  });
 });
 
 test('duplicate registration leaves the OTP available for login', async () => {

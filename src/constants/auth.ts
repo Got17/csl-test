@@ -8,6 +8,10 @@ export enum TokenPurpose {
   Access = 'access',
 }
 
+export enum AuthField {
+  OtpCode = 'otp_code',
+}
+
 export enum AuthError {
   InvalidOtp = 'invalid_otp',
   MaxAttempt = 'max_attempt',

@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { ErrorCode } from '../constants/error-code';
-import { MultipartErrorCode } from '../constants/validation';
+import { UserField } from '../constants/user';
 import { getProfile, updateProfile } from '../controllers/profile';
 import { requireAccessToken } from '../middlewares/access-token';
-import { sendBadRequest } from '../utils/error-response';
+import { sendMultipartError } from '../utils/error-response';
 
 export const usersRouter = Router();
 
@@ -23,9 +22,7 @@ const parseProfileFormData = multer({
 usersRouter.patch('/me', requireAccessToken, (req, res, next) => {
   parseProfileFormData(req, res, (error) => {
     if (error) {
-      const tooManyFields = error instanceof multer.MulterError
-        && (error.code === MultipartErrorCode.FieldCount || error.code === MultipartErrorCode.PartCount);
-      sendBadRequest(res, tooManyFields ? ErrorCode.ValidationUnknownField : ErrorCode.ValidationInvalidField);
+      sendMultipartError(res, error, req.body, [UserField.Name]);
       return;
     }
     next();
