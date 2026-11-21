@@ -7,6 +7,7 @@ const PROFILE_ATTRIBUTES = [
   UserField.Id,
   UserField.PhoneNumber,
   UserField.Name,
+  UserField.ImageUrl,
 ];
 
 export function profileData(user: UserModel): ProfileDto {
@@ -14,6 +15,7 @@ export function profileData(user: UserModel): ProfileDto {
     id: user.getDataValue(UserField.Id),
     phone_number: user.getDataValue(UserField.PhoneNumber),
     name: user.getDataValue(UserField.Name),
+    image_url: user.getDataValue(UserField.ImageUrl),
   };
 }
 

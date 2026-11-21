@@ -405,6 +405,44 @@
           "raw": "{\n  \"phone_number\": \"8562051111111\",\n  \"name\": \"{{updated_name}}\"\n}"
         }
       }
+    },
+    {
+      "name": "Upload profile image",
+      "description": "Choose a local JPEG, PNG, or WebP file for the image form-data field before sending.",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Profile image upload succeeds', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(pm.response.json().data.image_url).to.be.a('string').and.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "image",
+              "type": "file",
+              "src": null
+            }
+          ]
+        },
+        "url": "{{base_url}}/api/users/me/image"
+      }
     }
   ]
 }

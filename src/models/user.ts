@@ -5,6 +5,7 @@ interface UserAttributes {
   id: number;
   phone_number: string;
   name: string;
+  image_url: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +28,10 @@ export const User = sequelize.define<UserModel>('User', {
   name: {
     type: DataTypes.STRING(100),
     allowNull: false,
+  },
+  image_url: {
+    type: DataTypes.STRING(2048),
+    allowNull: true,
   },
   createdAt: {
     type: DataTypes.DATE,

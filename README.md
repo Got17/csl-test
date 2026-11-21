@@ -1,6 +1,6 @@
 # Backend authentication API
 
-A TypeScript, Express and PostgreSQL API for OTP registration, login and profile management. The fake OTP is stored in the database and returned in the response for this assessment; no SMS service is required. Optional profile image upload is not implemented.
+A TypeScript, Express and PostgreSQL API for OTP registration, login and profile management. The fake OTP is stored in the database and returned in the response for this assessment; no SMS service is required.
 
 ## Start
 
@@ -54,8 +54,12 @@ OTP delivery uses an interface; only the fake implementation is included. A futu
 | `POST` | `/api/auth/login` | Temporary | `otp_code` |
 | `GET` | `/api/users/me` | Access | — |
 | `PATCH` | `/api/users/me` | Access | `name` |
+| `POST` | `/api/users/me/image` | Access | multipart `image` (JPEG/PNG/WebP, max 5 MB) |
 
 Send tokens as `Authorization: Bearer <token>`. Bodies accept JSON or form-data, and responses contain `error`, `code`, `message` and `data`. Error messages support `Accept-Language: lo` or `en`; English is the default. Unknown fields return `VALIDATION_ERR_UNKNOWN_FIELD`. If a multipart limit is reached before an unknown field is parsed, the invalid-field error takes precedence.
+
+Profile image URLs are returned as `image_url` and served from local storage under `/uploads`. Set `UPLOAD_DIRECTORY` to change the storage directory.
+To view an uploaded image, prepend your API base URL to the returned `image_url` (for example, `http://localhost:3000` + `/uploads/<filename>.png`) and open the result in a browser or send a `GET` request in Postman. To upload from Postman, send `POST /api/users/me/image` as form-data with the key `image` set to a JPEG, PNG or WebP file.
 
 ## Automated tests
 

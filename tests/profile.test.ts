@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
 import { after, test } from 'node:test';
 import jwt from 'jsonwebtoken';
+import sharp from 'sharp';
 import request from 'supertest';
 import { app } from '../src/app';
 import { sequelize } from '../src/config/database';
+import { ProfileImageFormField, ProfileImageMimeType, ProfileImageRoute } from '../src/constants/profile-image';
+import { UserField } from '../src/constants/user';
 
 if (process.env.DB_NAME !== 'csl_otp_test') {
   throw new Error('Integration tests require an isolated database named csl_otp_test');
@@ -42,7 +45,7 @@ test('a registered user can read their profile', async () => {
   assert.equal(profile.body.data.phone_number, user.phone);
   assert.equal(profile.body.data.name, 'John Doe');
   assert.equal(typeof profile.body.data.id, 'number');
-  assert.deepEqual(Object.keys(profile.body.data).sort(), ['id', 'name', 'phone_number']);
+  assert.deepEqual(Object.keys(profile.body.data).sort(), [UserField.Id, UserField.ImageUrl, UserField.Name, UserField.PhoneNumber]);
 });
 
 test('an authenticated user can update their name', async () => {
@@ -53,11 +56,85 @@ test('an authenticated user can update their name', async () => {
       name: '  Jane Doe  ',
     });
   assert.equal(response.status, 200);
-  assert.deepEqual(Object.keys(response.body.data).sort(), ['id', 'name', 'phone_number']);
+  assert.deepEqual(Object.keys(response.body.data).sort(), [UserField.Id, UserField.ImageUrl, UserField.Name, UserField.PhoneNumber]);
   const profile = await request(app).get('/api/users/me')
     .set('Authorization', `Bearer ${user.accessToken}`);
   assert.equal(profile.body.data.name, 'Jane Doe');
   assert.equal(profile.body.data.phone_number, user.phone);
+});
+
+test('an authenticated user can upload and retrieve a profile image', async () => {
+  const user = await registerUser();
+  const png = await sharp({
+    create: {
+      width: 1,
+      height: 1,
+      channels: 3,
+      background: '#ffffff',
+    },
+  }).png().toBuffer();
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const uploaded = await request(baseUrl).post(`/api/users${ProfileImageRoute.Upload}`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .set('Host', 'attacker.invalid')
+      .attach(ProfileImageFormField.File, png, {
+        filename: 'avatar.png',
+        contentType: ProfileImageMimeType.Png,
+      });
+    assert.equal(uploaded.status, 200);
+    const imageUrl = uploaded.body.data[UserField.ImageUrl] as string;
+    assert.equal(imageUrl.startsWith(`${ProfileImageRoute.PublicPath}/`), true);
+    const imagePath = imageUrl;
+    const retrieved = await request(baseUrl).get(imagePath);
+    assert.equal(retrieved.status, 200, `${imageUrl}: ${retrieved.text}`);
+    assert.deepEqual(retrieved.body, png);
+
+    const replacement = await request(baseUrl).post('/api/users/me/image')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .attach(ProfileImageFormField.File, png, {
+        filename: 'replacement.png',
+        contentType: ProfileImageMimeType.Png,
+      });
+    assert.equal(replacement.status, 200);
+    assert.notEqual(replacement.body.data[UserField.ImageUrl], imageUrl);
+    const replacedImage = await request(baseUrl).get(imagePath);
+    assert.equal(replacedImage.status, 404);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
+test('image upload requires authentication and rejects unsupported image content', async () => {
+  const user = await registerUser();
+  const uploadPath = `/api/users${ProfileImageRoute.Upload}`;
+  const unauthorized = await request(app).post(uploadPath)
+    .attach(ProfileImageFormField.File, Buffer.from('not an image'), {
+      filename: 'avatar.png',
+      contentType: ProfileImageMimeType.Png,
+    });
+  assert.equal(unauthorized.status, 401);
+
+  const invalid = await request(app).post(uploadPath)
+    .set('Authorization', `Bearer ${user.accessToken}`)
+    .attach(ProfileImageFormField.File, Buffer.from('not an image'), {
+      filename: 'avatar.png',
+      contentType: ProfileImageMimeType.Png,
+    });
+  assert.equal(invalid.status, 400);
+
+  const truncated = await request(app).post(uploadPath)
+    .set('Authorization', `Bearer ${user.accessToken}`)
+    .attach(ProfileImageFormField.File, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]), {
+      filename: 'truncated.png',
+      contentType: ProfileImageMimeType.Png,
+    });
+  assert.equal(truncated.status, 400);
 });
 
 test('profile changes reject phone number and unknown fields', async () => {

@@ -7,6 +7,7 @@ import { UserModel } from '../models/user';
 import { findProfile, profileData, updateProfileName } from '../services/profile';
 import { sendBadRequest, sendError, sendInternalServerError } from '../utils/error-response';
 import { messages } from '../utils/message';
+import { saveProfileImage } from '../services/profile-image';
 import { nameSchema } from '../validations/name';
 
 const updateSchema = Joi.object<UpdateProfileDto>({
@@ -51,6 +52,25 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
     sendProfileResponse(res, user);
   } catch (updateError) {
     console.error(messages.profileRequestFailed.en, updateError);
+    sendInternalServerError(res);
+  }
+}
+
+export async function uploadProfileImage(req: Request, res: Response): Promise<void> {
+  if (!req.file) {
+    sendBadRequest(res);
+    return;
+  }
+  try {
+    const saved = await saveProfileImage(res.locals.userId, req.file);
+    if (!saved) {
+      sendBadRequest(res);
+      return;
+    }
+    const user = await findProfile(res.locals.userId);
+    sendProfileResponse(res, user);
+  } catch (error) {
+    console.error(messages.profileRequestFailed.en, error);
     sendInternalServerError(res);
   }
 }
