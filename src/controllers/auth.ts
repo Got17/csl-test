@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import Joi from 'joi';
 import { ErrorCode } from '../constants/error-code';
+import { LogEvent } from '../constants/logging';
 import { PHONE_NUMBER_PATTERN, ValidationErrorType } from '../constants/validation';
 import { RequestOtpDto } from '../dtos/auth';
 import { OtpDelivery, OtpDeliveryOutcome } from '../otp-delivery/otp-delivery';
 import { issueOtp } from '../services/otp';
 import { sendBadRequest, sendInternalServerError } from '../utils/error-response';
+import { logError } from '../utils/logger';
 import { messages, requestMessage } from '../utils/message';
 
 const requestSchema = Joi.object<RequestOtpDto>({
@@ -39,13 +41,17 @@ export async function requestOtp(req: Request, res: Response, delivery: OtpDeliv
     let outcome: OtpDeliveryOutcome;
     try {
       outcome = await delivery.deliver(value.phone_number, result.otpCode);
-    } catch {
-      console.error(messages.otpDeliveryFailed.en);
+    } catch (error) {
+      logError(LogEvent.OtpDeliveryFailed, error, {
+        requestId: res.locals.requestId,
+      });
       sendInternalServerError(res);
       return;
     }
     if (outcome !== OtpDeliveryOutcome.Fake && outcome !== OtpDeliveryOutcome.Delivered) {
-      console.error(messages.otpDeliveryFailed.en);
+      logError(LogEvent.OtpDeliveryFailed, undefined, {
+        requestId: res.locals.requestId,
+      });
       sendInternalServerError(res);
       return;
     }
@@ -60,7 +66,9 @@ export async function requestOtp(req: Request, res: Response, delivery: OtpDeliv
       } : {},
     });
   } catch (err) {
-    console.error(messages.otpRequestFailed.en, err);
+    logError(LogEvent.OtpRequestFailed, err, {
+      requestId: res.locals.requestId,
+    });
     sendInternalServerError(res);
   }
 }

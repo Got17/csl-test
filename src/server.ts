@@ -1,15 +1,18 @@
 import 'dotenv/config';
 import { app } from './app';
+import { LogEvent } from './constants/logging';
 import { sequelize } from './config/database';
-import { messages } from './utils/message';
+import { logError, logInfo } from './utils/logger';
 
 async function start(): Promise<void> {
   try {
     await sequelize.authenticate();
     const port = Number(process.env.PORT || 3000);
-    app.listen(port, () => console.log(`Server listening on port ${port}`));
+    app.listen(port, () => logInfo(LogEvent.ServerStarted, {
+      port,
+    }));
   } catch (error) {
-    console.error(messages.databaseConnectionFailed.en, error);
+    logError(LogEvent.DatabaseConnectionFailed, error);
     process.exitCode = 1;
     await sequelize.close();
   }

@@ -2,8 +2,9 @@ import { RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 import { AUTHORIZATION_HEADER, BEARER_TOKEN_PATTERN, JWT_ALGORITHM, TokenPurpose } from '../constants/auth';
 import { ErrorCode } from '../constants/error-code';
+import { LogEvent } from '../constants/logging';
 import { sendError, sendInternalServerError } from '../utils/error-response';
-import { messages } from '../utils/message';
+import { logError } from '../utils/logger';
 
 const MAX_USER_ID = 2_147_483_647;
 const USER_ID_PATTERN = /^[1-9]\d*$/;
@@ -11,7 +12,9 @@ const USER_ID_PATTERN = /^[1-9]\d*$/;
 export const requireAccessToken: RequestHandler = (req, res, next) => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    console.error(messages.missingJwtSecret.en);
+    logError(LogEvent.MissingJwtSecret, undefined, {
+      requestId: res.locals.requestId,
+    });
     sendInternalServerError(res);
     return;
   }

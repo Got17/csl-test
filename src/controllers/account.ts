@@ -2,10 +2,12 @@ import { Request, Response } from 'express';
 import Joi from 'joi';
 import { AUTHORIZATION_HEADER, BEARER_TOKEN_PATTERN, AuthAction, AuthError } from '../constants/auth';
 import { ErrorCode } from '../constants/error-code';
+import { LogEvent } from '../constants/logging';
 import { ValidationErrorType } from '../constants/validation';
 import { LoginDto, RegisterDto } from '../dtos/auth';
 import { authenticate, verifyTemporaryToken } from '../services/auth';
 import { sendBadRequest, sendError, sendInternalServerError } from '../utils/error-response';
+import { logError } from '../utils/logger';
 import { messages } from '../utils/message';
 import { nameSchema } from '../validations/name';
 
@@ -70,7 +72,9 @@ export async function handleAuthentication(req: Request, res: Response, action: 
       },
     });
   } catch (error) {
-    console.error(messages.authenticationFailed.en, error);
+    logError(LogEvent.AuthenticationFailed, error, {
+      requestId: res.locals.requestId,
+    });
     sendInternalServerError(res);
   }
 }
