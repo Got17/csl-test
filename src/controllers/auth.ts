@@ -2,13 +2,12 @@ import { Request, Response } from 'express';
 import Joi from 'joi';
 import { ErrorCode } from '../constants/error-code';
 import { PHONE_NUMBER_PATTERN, ValidationErrorType } from '../constants/validation';
+import { RequestOtpDto } from '../dtos/auth';
 import { issueOtp } from '../services/otp';
 import { sendBadRequest, sendInternalServerError } from '../utils/error-response';
 import { messages, requestMessage } from '../utils/message';
 
-const requestSchema = Joi.object<{
-  phone_number: string;
-}>({
+const requestSchema = Joi.object<RequestOtpDto>({
   phone_number: Joi.string().trim().pattern(PHONE_NUMBER_PATTERN).required(),
 }).unknown(false).required();
 

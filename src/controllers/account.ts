@@ -3,21 +3,17 @@ import Joi from 'joi';
 import { AuthAction, AuthError } from '../constants/auth';
 import { ErrorCode } from '../constants/error-code';
 import { ValidationErrorType } from '../constants/validation';
+import { LoginDto, RegisterDto } from '../dtos/auth';
 import { authenticate, verifyTemporaryToken } from '../services/auth';
 import { sendBadRequest, sendError, sendInternalServerError } from '../utils/error-response';
 import { messages } from '../utils/message';
 
 const otpCode = Joi.string().pattern(/^\d{6}$/).required();
-const registerSchema = Joi.object<{
-  otp_code: string;
-  name: string;
-}>({
+const registerSchema = Joi.object<RegisterDto>({
   otp_code: otpCode,
   name: Joi.string().trim().max(100).required(),
 }).unknown(false).required();
-const loginSchema = Joi.object<{
-  otp_code: string;
-}>({
+const loginSchema = Joi.object<LoginDto>({
   otp_code: otpCode,
 }).unknown(false).required();
 
