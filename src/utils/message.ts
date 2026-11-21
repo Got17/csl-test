@@ -69,6 +69,10 @@ export const messages = {
     en: 'OTP request failed:',
     lo: 'ຂໍລະຫັດ OTP ບໍ່ສຳເລັດ:',
   },
+  otpDeliveryFailed: {
+    en: 'OTP delivery failed',
+    lo: 'ສົ່ງລະຫັດ OTP ບໍ່ສຳເລັດ',
+  },
   requestFailed: {
     en: 'Request failed:',
     lo: 'ຄຳຮ້ອງຂໍບໍ່ສຳເລັດ:',

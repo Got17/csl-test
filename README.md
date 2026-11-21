@@ -43,6 +43,8 @@ The collection also includes form-data and validation examples. It saves tokens 
 
 OTPs expire after **one minute**, become invalid when replaced or used, and are limited to **three requests per phone number per rolling hour**. After three wrong entries, further attempts are rejected. Profile endpoints require the access token; the temporary token is only for registration and login.
 
+OTP delivery uses an interface; only the fake implementation is included. A future SMS implementation can be supplied when creating the app and must return the delivered outcome so the response omits the code. Delivery happens after the OTP is saved; if delivery fails, the request remains counted and earlier OTPs stay invalidated.
+
 ## Endpoints
 
 | Method | Path | Token | Body |
