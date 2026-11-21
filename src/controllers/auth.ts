@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import Joi from 'joi';
+import { ErrorCode } from '../constants/error-code';
+import { PHONE_NUMBER_PATTERN, ValidationErrorType } from '../constants/validation';
 import { issueOtp } from '../services/otp';
 import { sendBadRequest, sendInternalServerError } from '../utils/error-response';
 import { messages, requestMessage } from '../utils/message';
@@ -7,7 +9,7 @@ import { messages, requestMessage } from '../utils/message';
 const requestSchema = Joi.object<{
   phone_number: string;
 }>({
-  phone_number: Joi.string().trim().pattern(/^\d{8,15}$/).required(),
+  phone_number: Joi.string().trim().pattern(PHONE_NUMBER_PATTERN).required(),
 }).unknown(false).required();
 
 export async function requestOtp(req: Request, res: Response): Promise<void> {
@@ -16,8 +18,8 @@ export async function requestOtp(req: Request, res: Response): Promise<void> {
   });
 
   if (error) {
-    const unknownField = error.details.some((detail) => detail.type === 'object.unknown');
-    sendBadRequest(res, unknownField ? 'VALIDATION_ERR_UNKNOWN_FIELD' : 'VALIDATION_ERR_INVALID_FIELD');
+    const unknownField = error.details.some((detail) => detail.type === ValidationErrorType.UnknownField);
+    sendBadRequest(res, unknownField ? ErrorCode.ValidationUnknownField : ErrorCode.ValidationInvalidField);
     return;
   }
 
@@ -27,7 +29,7 @@ export async function requestOtp(req: Request, res: Response): Promise<void> {
       res.vary('Accept-Language');
       res.status(429).json({
         error: true,
-        code: 'OTP_ERR_MAX_REQUEST',
+        code: ErrorCode.OtpMaxRequest,
         message: requestMessage(req, 'otpMaxRequest'),
         data: {},
       });
@@ -38,7 +40,7 @@ export async function requestOtp(req: Request, res: Response): Promise<void> {
     res.json({
       error: false,
       code: 0,
-      message: 'Success',
+      message: messages.success.en,
       data: {
         otp_code: result.otpCode,
       },

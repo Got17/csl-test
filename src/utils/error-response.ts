@@ -1,22 +1,21 @@
 import { Response } from 'express';
-import { requestMessage } from './message';
+import { ErrorCode } from '../constants/error-code';
+import { messages, requestMessage } from './message';
 
-export function sendBadRequest(res: Response, code = 'VALIDATION_ERR_INVALID_FIELD'): void {
+export function sendError(res: Response, status: number, code: ErrorCode, key: keyof typeof messages): void {
   res.vary('Accept-Language');
-  res.status(400).json({
+  res.status(status).json({
     error: true,
     code,
-    message: requestMessage(res.req, 'badRequest'),
+    message: requestMessage(res.req, key),
     data: {},
   });
 }
 
+export function sendBadRequest(res: Response, code: ErrorCode = ErrorCode.ValidationInvalidField): void {
+  sendError(res, 400, code, 'badRequest');
+}
+
 export function sendInternalServerError(res: Response): void {
-  res.vary('Accept-Language');
-  res.status(500).json({
-    error: true,
-    code: 'INTERNAL_SERVER_ERROR',
-    message: requestMessage(res.req, 'internalServerError'),
-    data: {},
-  });
+  sendError(res, 500, ErrorCode.InternalServerError, 'internalServerError');
 }

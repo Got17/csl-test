@@ -2,8 +2,10 @@ import { randomInt, randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
 import { sequelize } from '../config/database';
+import { TokenPurpose } from '../constants/auth';
 import { OtpVerification } from '../models/otp-verification';
 import { messages } from '../utils/message';
+import { lockPhoneNumber } from '../utils/phone-lock';
 
 const OTP_REQUEST_LIMIT = 3;
 const REQUEST_WINDOW_MS = 60 * 60 * 1000;
@@ -22,12 +24,7 @@ export async function issueOtp(phoneNumber: string): Promise<{
   }
 
   return sequelize.transaction(async (transaction) => {
-    await sequelize.query('SELECT pg_advisory_xact_lock(hashtextextended(:phone, 0))', {
-      replacements: {
-        phone: phoneNumber,
-      },
-      transaction,
-    });
+    await lockPhoneNumber(phoneNumber, transaction);
 
     const now = new Date();
     const count = await OtpVerification.count({
@@ -68,7 +65,7 @@ export async function issueOtp(phoneNumber: string): Promise<{
     const token = jwt.sign({
       phone_number: phoneNumber,
       otp_id: id,
-      purpose: 'otp',
+      purpose: TokenPurpose.Otp,
     }, secret, {
       expiresIn,
     });

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Backend API",
-    "description": "Requests for the backend API. Currently includes assessment-only fake OTP requests and bilingual error examples; registration, login and profile requests will be added when implemented. At most three successful OTP requests are allowed per phone number in a rolling hour. Change the collection phone_number variable to test with a different number.",
+    "description": "Requests for the backend API, including OTP requests, registration and login. At most three successful OTP requests are allowed per phone number in a rolling hour. Use a new phone number when running the complete collection again.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -15,6 +15,18 @@
     },
     {
       "key": "temporary_token",
+      "value": ""
+    },
+    {
+      "key": "otp_code",
+      "value": ""
+    },
+    {
+      "key": "name",
+      "value": "John Doe"
+    },
+    {
+      "key": "access_token",
       "value": ""
     }
   ],
@@ -35,6 +47,7 @@
               "    pm.expect(pm.response.headers.get('X-Temporary-Token')).to.be.a('string').and.not.empty;",
               "  });",
               "  pm.collectionVariables.set('temporary_token', pm.response.headers.get('X-Temporary-Token'));",
+              "  pm.collectionVariables.set('otp_code', body.data.otp_code);",
               "}"
             ]
           }
@@ -64,7 +77,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Form-data OTP request succeeds', function () { pm.response.to.have.status(200); });",
-              "if (pm.response.code === 200) { pm.collectionVariables.set('temporary_token', pm.response.headers.get('X-Temporary-Token')); }"
+              "if (pm.response.code === 200) { pm.collectionVariables.set('temporary_token', pm.response.headers.get('X-Temporary-Token')); }",
+              "if (pm.response.code === 200) { pm.collectionVariables.set('otp_code', pm.response.json().data.otp_code); }"
             ]
           }
         }
@@ -183,6 +197,112 @@
           "raw": "{\n  \"phone_number\": \"123\"\n}"
         },
         "url": "{{base_url}}/api/auth/otp"
+      }
+    },
+    {
+      "name": "Register with OTP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Register with OTP succeeds', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) {",
+              "  const token = pm.response.json().data.access_token;",
+              "  pm.test('Access token is returned', function () { pm.expect(token).to.be.a('string').and.not.empty; });",
+              "  pm.collectionVariables.set('access_token', token);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{temporary_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"otp_code\": \"{{otp_code}}\",\n  \"name\": \"{{name}}\"\n}"
+        },
+        "url": "{{base_url}}/api/auth/register"
+      }
+    },
+    {
+      "name": "Request OTP for login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login OTP request succeeds', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set('temporary_token', pm.response.headers.get('X-Temporary-Token'));",
+              "  pm.collectionVariables.set('otp_code', pm.response.json().data.otp_code);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"{{phone_number}}\"\n}"
+        },
+        "url": "{{base_url}}/api/auth/otp"
+      }
+    },
+    {
+      "name": "Login with OTP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login with OTP succeeds', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) {",
+              "  const token = pm.response.json().data.access_token;",
+              "  pm.test('Access token is returned', function () { pm.expect(token).to.be.a('string').and.not.empty; });",
+              "  pm.collectionVariables.set('access_token', token);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{temporary_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"otp_code\": \"{{otp_code}}\"\n}"
+        },
+        "url": "{{base_url}}/api/auth/login"
       }
     }
   ]
